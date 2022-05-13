@@ -230,7 +230,7 @@ const PopoverContentModal = React.forwardRef<PopoverContentTypeElement, PopoverC
 
     return (
       <PortalWrapper>
-        <RemoveScroll allowPinchZoom={allowPinchZoom}>
+        <RemoveScroll allowPinchZoom={allowPinchZoom} removeScrollBar={false}>
           <PopoverContentImpl
             {...contentModalProps}
             ref={composedRefs}

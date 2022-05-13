@@ -2,7 +2,7 @@ import * as React from 'react';
 import { composeEventHandlers } from '@radix-ui/primitive';
 import { Primitive } from '@radix-ui/react-primitive';
 import { useComposedRefs } from '@radix-ui/react-compose-refs';
-import { useBodyPointerEvents } from '@radix-ui/react-use-body-pointer-events';
+// import { useBodyPointerEvents } from '@radix-ui/react-use-body-pointer-events';
 import { useCallbackRef } from '@radix-ui/react-use-callback-ref';
 import { useEscapeKeydown } from '@radix-ui/react-use-escape-keydown';
 
@@ -81,14 +81,14 @@ const DismissableLayer = React.forwardRef<DismissableLayerElement, DismissableLa
     const isBodyPointerEventsDisabled = context.layersWithOutsidePointerEventsDisabled.size > 0;
     const isPointerEventsEnabled = index >= highestLayerWithOutsidePointerEventsDisabledIndex;
 
-    const pointerDownOutside = usePointerDownOutside((event) => {
-      const target = event.target as HTMLElement;
-      const isPointerDownOnBranch = [...context.branches].some((branch) => branch.contains(target));
-      if (!isPointerEventsEnabled || isPointerDownOnBranch) return;
-      onPointerDownOutside?.(event);
-      onInteractOutside?.(event);
-      if (!event.defaultPrevented) onDismiss?.();
-    });
+    // const pointerDownOutside = usePointerDownOutside((event) => {
+    //   const target = event.target as HTMLElement;
+    //   const isPointerDownOnBranch = [...context.branches].some((branch) => branch.contains(target));
+    //   if (!isPointerEventsEnabled || isPointerDownOnBranch) return;
+    //   onPointerDownOutside?.(event);
+    //   onInteractOutside?.(event);
+    //   if (!event.defaultPrevented) onDismiss?.();
+    // });
 
     const focusOutside = useFocusOutside((event) => {
       const target = event.target as HTMLElement;
@@ -106,7 +106,7 @@ const DismissableLayer = React.forwardRef<DismissableLayerElement, DismissableLa
       if (!event.defaultPrevented) onDismiss?.();
     });
 
-    useBodyPointerEvents({ disabled: disableOutsidePointerEvents });
+    // useBodyPointerEvents({ disabled: disableOutsidePointerEvents });
 
     React.useEffect(() => {
       if (!node) return;
@@ -137,24 +137,47 @@ const DismissableLayer = React.forwardRef<DismissableLayerElement, DismissableLa
     }, []);
 
     return (
-      <Primitive.div
-        {...layerProps}
-        ref={composedRefs}
-        style={{
-          pointerEvents: isBodyPointerEventsDisabled
-            ? isPointerEventsEnabled
-              ? 'auto'
-              : 'none'
-            : undefined,
-          ...props.style,
-        }}
-        onFocusCapture={composeEventHandlers(props.onFocusCapture, focusOutside.onFocusCapture)}
-        onBlurCapture={composeEventHandlers(props.onBlurCapture, focusOutside.onBlurCapture)}
-        onPointerDownCapture={composeEventHandlers(
-          props.onPointerDownCapture,
-          pointerDownOutside.onPointerDownCapture
-        )}
-      />
+      <React.Fragment>
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            bottom: 0,
+            left: 0,
+            right: 0,
+          }}
+          onPointerDown={(event) => {
+            const target = event.target as HTMLElement;
+            const isPointerDownOnBranch = [...context.branches].some((branch) =>
+              branch.contains(target)
+            );
+            if (!isPointerEventsEnabled || isPointerDownOnBranch) return;
+            if (onPointerDownOutside) {
+              const eventDetail = { originalEvent: event.nativeEvent };
+              dispatchCustomEvent(POINTER_DOWN_OUTSIDE, onPointerDownOutside, eventDetail);
+            }
+            if (onInteractOutside) {
+              const eventDetail = { originalEvent: event.nativeEvent };
+              dispatchCustomEvent(POINTER_DOWN_OUTSIDE, onInteractOutside, eventDetail);
+            }
+            if (!event.defaultPrevented) onDismiss?.();
+          }}
+        />
+        <Primitive.div
+          {...layerProps}
+          ref={composedRefs}
+          style={{
+            pointerEvents: isBodyPointerEventsDisabled
+              ? isPointerEventsEnabled
+                ? 'auto'
+                : 'none'
+              : undefined,
+            ...props.style,
+          }}
+          onFocusCapture={composeEventHandlers(props.onFocusCapture, focusOutside.onFocusCapture)}
+          onBlurCapture={composeEventHandlers(props.onBlurCapture, focusOutside.onBlurCapture)}
+        />
+      </React.Fragment>
     );
   }
 );
@@ -203,45 +226,45 @@ type FocusOutsideEvent = CustomEvent<{ originalEvent: FocusEvent }>;
  * to mimic layer dismissing behaviour present in OS.
  * Returns props to pass to the node we want to check for outside events.
  */
-function usePointerDownOutside(onPointerDownOutside?: (event: PointerDownOutsideEvent) => void) {
-  const handlePointerDownOutside = useCallbackRef(onPointerDownOutside) as EventListener;
-  const isPointerInsideReactTreeRef = React.useRef(false);
+// function usePointerDownOutside(onPointerDownOutside?: (event: PointerDownOutsideEvent) => void) {
+//   const handlePointerDownOutside = useCallbackRef(onPointerDownOutside) as EventListener;
+//   const isPointerInsideReactTreeRef = React.useRef(false);
 
-  React.useEffect(() => {
-    const handlePointerDown = (event: PointerEvent) => {
-      if (event.target && !isPointerInsideReactTreeRef.current) {
-        const eventDetail = { originalEvent: event };
-        dispatchCustomEvent(POINTER_DOWN_OUTSIDE, handlePointerDownOutside, eventDetail);
-      }
-      isPointerInsideReactTreeRef.current = false;
-    };
-    /**
-     * if this hook executes in a component that mounts via a `pointerdown` event, the event
-     * would bubble up to the document and trigger a `pointerDownOutside` event. We avoid
-     * this by delaying the event listener registration on the document.
-     * This is not React specific, but rather how the DOM works, ie:
-     * ```
-     * button.addEventListener('pointerdown', () => {
-     *   console.log('I will log');
-     *   document.addEventListener('pointerdown', () => {
-     *     console.log('I will also log');
-     *   })
-     * });
-     */
-    const timerId = window.setTimeout(() => {
-      document.addEventListener('pointerdown', handlePointerDown);
-    }, 0);
-    return () => {
-      window.clearTimeout(timerId);
-      document.removeEventListener('pointerdown', handlePointerDown);
-    };
-  }, [handlePointerDownOutside]);
+//   React.useEffect(() => {
+//     const handlePointerDown = (event: PointerEvent) => {
+//       if (event.target && !isPointerInsideReactTreeRef.current) {
+//         const eventDetail = { originalEvent: event };
+//         dispatchCustomEvent(POINTER_DOWN_OUTSIDE, handlePointerDownOutside, eventDetail);
+//       }
+//       isPointerInsideReactTreeRef.current = false;
+//     };
+//     /**
+//      * if this hook executes in a component that mounts via a `pointerdown` event, the event
+//      * would bubble up to the document and trigger a `pointerDownOutside` event. We avoid
+//      * this by delaying the event listener registration on the document.
+//      * This is not React specific, but rather how the DOM works, ie:
+//      * ```
+//      * button.addEventListener('pointerdown', () => {
+//      *   console.log('I will log');
+//      *   document.addEventListener('pointerdown', () => {
+//      *     console.log('I will also log');
+//      *   })
+//      * });
+//      */
+//     const timerId = window.setTimeout(() => {
+//       document.addEventListener('pointerdown', handlePointerDown);
+//     }, 0);
+//     return () => {
+//       window.clearTimeout(timerId);
+//       document.removeEventListener('pointerdown', handlePointerDown);
+//     };
+//   }, [handlePointerDownOutside]);
 
-  return {
-    // ensures we check React component tree (not just DOM tree)
-    onPointerDownCapture: () => (isPointerInsideReactTreeRef.current = true),
-  };
-}
+//   return {
+//     // ensures we check React component tree (not just DOM tree)
+//     onPointerDownCapture: () => (isPointerInsideReactTreeRef.current = true),
+//   };
+// }
 
 /**
  * Listens for when focus happens outside a react subtree.

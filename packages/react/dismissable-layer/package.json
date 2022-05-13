@@ -17,12 +17,12 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.13.10",
-    "@radix-ui/primitive": "workspace:*",
-    "@radix-ui/react-compose-refs": "workspace:*",
-    "@radix-ui/react-primitive": "workspace:*",
-    "@radix-ui/react-use-body-pointer-events": "workspace:*",
-    "@radix-ui/react-use-callback-ref": "workspace:*",
-    "@radix-ui/react-use-escape-keydown": "workspace:*"
+    "@radix-ui/primitive": "*",
+    "@radix-ui/react-compose-refs": "*",
+    "@radix-ui/react-primitive": "*",
+    "@radix-ui/react-use-body-pointer-events": "*",
+    "@radix-ui/react-use-callback-ref": "*",
+    "@radix-ui/react-use-escape-keydown": "*"
   },
   "devDependencies": {
     "react-remove-scroll": "^2.4.0"
